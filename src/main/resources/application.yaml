@@ -63,10 +63,10 @@ logging:
 # ------------------------------------------
 ---
 spring:
-  config:
-    activate:
-      on-profile: dev
-
+  profiles:
+    active: dev
+  application:
+    name: smarttask-backend
   datasource:
     url: jdbc:postgresql://localhost:5432/smarttask
     username: smarttask_user
@@ -74,6 +74,8 @@ spring:
     driver-class-name: org.postgresql.Driver
 
   jpa:
+    hibernate:
+      ddl-auto: update
     show-sql: true
 
 springdoc:
@@ -81,7 +83,10 @@ springdoc:
     enabled: true
   swagger-ui:
     enabled: true
-
+swagger:
+  auth:
+    username: swagger-admin
+    password: swagger@123
 security:
   jwt:
     # ✅ Use a strong Base64-encoded secret for dev

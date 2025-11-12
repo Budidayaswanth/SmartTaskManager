@@ -28,8 +28,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         String path = request.getServletPath();
 
-        // ✅ Bypass Swagger & Auth endpoints to avoid 403
-        if (path.startsWith("/api/auth/") ||
+        // ✅ Bypass Swagger + Auth endpoints
+        if (path.startsWith("/api/auth/swagger-login") ||
+                path.startsWith("/api/auth/login") ||
+                path.startsWith("/api/auth/register") ||
                 path.startsWith("/swagger") ||
                 path.startsWith("/v3/api-docs") ||
                 path.startsWith("/error")) {
@@ -37,7 +39,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             return;
         }
 
-        // ✅ Proceed normally for secured endpoints
+        // ✅ For everything else — verify JWT
         final String authHeader = request.getHeader("Authorization");
         final String jwt;
         final String username;
@@ -59,6 +61,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 SecurityContextHolder.getContext().setAuthentication(authToken);
             }
         }
+
         filterChain.doFilter(request, response);
     }
+
 }
