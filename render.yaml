@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: smarttask-backend
+    env: docker
+    dockerfilePath: Dockerfile
+    plan: free
+    autoDeploy: true
+    healthCheckPath: /swagger
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod

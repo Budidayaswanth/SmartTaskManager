@@ -1,0 +1,9 @@
+target/
+**/target/
+.idea/
+.vscode/
+.git
+.gitignore
+.DS_Store
+.mvn/wrapper/
+node_modules/
