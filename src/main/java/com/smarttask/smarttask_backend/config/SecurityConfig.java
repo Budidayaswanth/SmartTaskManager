@@ -57,7 +57,7 @@ public class SecurityConfig {
                     return c;
                 }))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/swagger/**","/v3/api-docs/**").permitAll()
+                        .requestMatchers("/swagger/**","/v1/api-docs/**").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET,"/actuator/health","/api/health").permitAll()
                         .anyRequest().authenticated()
