@@ -1,12 +1,20 @@
 window.onload = async function() {
   // Load Swagger UI
   const ui = SwaggerUIBundle({
-    url: "/v3/api-docs",
+    url: "/v1/api-docs",
     dom_id: "#swagger-ui",
     presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
     layout: "BaseLayout",
     deepLinking: true,
     persistAuthorization: true
+    requestInterceptor: (req) => {
+          if (req.url.endsWith("/api/auth/swagger-login") && req.method === "POST") {
+            req.body = JSON.stringify({
+              username: "swagger-admin",
+              password: "swagger@123"
+            });
+          }
+          return req;
   });
 
   // Automatically authenticate Swagger

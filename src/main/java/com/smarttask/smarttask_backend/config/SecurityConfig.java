@@ -59,7 +59,7 @@ public class SecurityConfig {
                     var c = new CorsConfiguration();
                     c.setAllowedOrigins(List.of(
                             "https://smarttask-app.onrender.com", // Flutter web
-                            "https://smarttask-backend.onrender.com",
+                            "https://smarttaskmanager-s0fd.onrender.com",
                             "http://localhost:3000",
                             "http://localhost:8080",
                             "*"

@@ -27,6 +27,7 @@ server:
 springdoc:
   swagger-ui:
     path: /swagger
+    url: /v1/api-docs
     display-request-duration: true
     doc-expansion: none
   api-docs:

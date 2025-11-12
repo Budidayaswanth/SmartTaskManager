@@ -57,7 +57,7 @@ public class AuthService {
         if (!encoder.matches(req.password(), u.getPassword()))
             throw new IllegalArgumentException("Invalid credentials");
 
-        String access = jwtService.generateToken(u.getUsername(), Map.of(
+        String access = jwtService.generateAccessToken(u.getUsername(), Map.of(
                 "role", u.getRole(),
                 "uid", u.getId().toString()
         ));

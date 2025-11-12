@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -28,7 +29,7 @@ public class SwaggerAuthController {
     private String swaggerPassword;
 
     @Operation(summary = "Swagger Admin Login",
-            description = "Authenticate Swagger UI and get a Bearer token for API testing.")
+            description = "Authenticate Swagger UI and get a Bearer token for testing APIs.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Login successful",
                     content = @Content(mediaType = "application/json",
@@ -36,22 +37,16 @@ public class SwaggerAuthController {
             @ApiResponse(responseCode = "401", description = "Invalid credentials")
     })
     @PostMapping
-    public ResponseEntity<?> swaggerLogin(@RequestBody SwaggerLoginRequest request) {
-        String username = request.getUsername();
-        String password = request.getPassword();
-
-        if (swaggerUsername.equals(username) && swaggerPassword.equals(password)) {
-            String token = jwtService.generateToken(username, Map.of("role", "SWAGGER_ADMIN"));
+    public ResponseEntity<?> swaggerLogin(@RequestBody @Valid SwaggerLoginRequest request) {
+        if (swaggerUsername.equals(request.getUsername()) && swaggerPassword.equals(request.getPassword())) {
+            String token = jwtService.generateToken(request.getUsername(), Map.of("role", "SWAGGER_ADMIN"));
             return ResponseEntity.ok(Map.of(
                     "accessToken", token,
                     "tokenType", "Bearer",
                     "message", "Swagger admin login successful"
             ));
-        } else {
-            return ResponseEntity.status(401).body(Map.of(
-                    "error", "Invalid Swagger credentials",
-                    "message", "Please check your Swagger admin username/password"
-            ));
         }
+        return ResponseEntity.status(401).body(Map.of("error", "Invalid Swagger credentials"));
     }
+
 }
