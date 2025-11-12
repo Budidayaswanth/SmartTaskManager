@@ -1,8 +1,6 @@
-###################################################################################
-# SMARTTASK BACKEND — MAIN CONFIGURATION (Spring Boot 3.5.x)
-# Supports both dev (local) and prod (Render) environments
-###################################################################################
-
+# ==========================================
+# 🌍 GLOBAL CONFIGURATION
+# ==========================================
 spring:
   application:
     name: smarttask-backend
@@ -10,7 +8,7 @@ spring:
   jpa:
     open-in-view: false
     hibernate:
-      ddl-auto: validate        # Schema managed by Flyway
+      ddl-auto: validate          # ✅ Flyway controls schema creation
     properties:
       hibernate:
         format_sql: true
@@ -21,24 +19,45 @@ spring:
     locations: classpath:db/migration
 
 server:
-  # On Render, port is injected via $PORT environment variable
-  port: ${PORT:8080}
+  port: 8080
 
+# ==========================================
+# 📘 SWAGGER / OPENAPI CONFIGURATION
+# ==========================================
 springdoc:
   swagger-ui:
     path: /swagger
+    display-request-duration: true
+    doc-expansion: none
   api-docs:
-    path: /v3/api-docs
+    path: /v1/api-docs
 
+# ==========================================
+# 🔐 SECURITY CONFIGURATION
+# ==========================================
 security:
   jwt:
     issuer: "smarttask"
-    access-exp-min: 15
-    refresh-exp-days: 7
+    access-exp-min: 15           # 15 minutes access token
+    refresh-exp-days: 7          # 7 days refresh token
 
-###################################################################################
-# DEV PROFILE — LOCAL DEVELOPMENT (runs with mvn spring-boot:run --spring.profiles.active=dev)
-###################################################################################
+# ==========================================
+# 🔉 LOGGING CONFIGURATION
+# ==========================================
+logging:
+  level:
+    org.springframework.security.config.annotation.authentication.configuration.InitializeUserDetailsBeanManagerConfigurer: ERROR
+    org.hibernate.SQL: DEBUG
+    org.springframework.web: INFO
+    com.smarttask: DEBUG
+
+# ==========================================
+# 🔁 PROFILE SPECIFIC CONFIGS
+# ==========================================
+
+# ------------------------------------------
+# 🧑‍💻 DEVELOPMENT PROFILE (Local setup)
+# ------------------------------------------
 ---
 spring:
   config:
@@ -54,14 +73,20 @@ spring:
   jpa:
     show-sql: true
 
-# For local development only
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
 security:
   jwt:
-    secret: "XWoVa04OgdmzxaXqMd4gOssJLIwouHZZ6aYPc07zyHu6BLwS2LMlaKeB37dnXjTq7Np+H/baPgnqK1cnhF9a1g=="
+    # ✅ Use a strong Base64-encoded secret for dev
+    secret: "v5n4bzxhS3V5NfW1xQbD12Dg5H3tL3s6u8+7aPZUcXAVyo8yBHYRrxU7v/6Qp5CdgSPyR7hFAT9YFj4w=="
 
-###################################################################################
-# PROD PROFILE — RENDER DEPLOYMENT (runs automatically inside Docker)
-###################################################################################
+# ------------------------------------------
+# ☁️ PRODUCTION PROFILE (Render)
+# ------------------------------------------
 ---
 spring:
   config:
@@ -69,16 +94,29 @@ spring:
       on-profile: prod
 
   datasource:
-    # Render will inject these environment variables
-    url: ${DB_URL}
-    username: ${DB_USER}
-    password: ${DB_PASSWORD}
+    url: ${DB_URL}                # Render env var (e.g. jdbc:postgresql://...)
+    username: ${DB_USER}          # Render env var
+    password: ${DB_PASSWORD}      # Render env var
     driver-class-name: org.postgresql.Driver
 
   jpa:
     show-sql: false
 
-# JWT secret and other secrets are injected via environment variables
+springdoc:
+  api-docs:
+    enabled: true                 # ✅ Keep true if you want Swagger visible on Render
+  swagger-ui:
+    enabled: true
+    path: /swagger
+
 security:
   jwt:
-    secret: ${JWT_SECRET}
+    secret: ${JWT_SECRET}         # Render env var (64-byte base64 key)
+
+# Optional Render tuning
+server:
+  compression:
+    enabled: true
+  tomcat:
+    threads:
+      max: 50
