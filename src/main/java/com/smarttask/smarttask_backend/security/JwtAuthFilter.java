@@ -1,20 +1,26 @@
 package com.smarttask.smarttask_backend.security;
 
-import com.smarttask.smarttask_backend.service.UserDetailsServiceImpl;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import com.smarttask.smarttask_backend.service.UserDetailsServiceImpl;
+import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Collection;
+import java.util.List;
 
 /**
  * ✅ JwtAuthFilter
@@ -30,6 +36,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final UserDetailsServiceImpl userDetailsService;
+    @Value("${swagger.auth.username}")
+    private String swaggerUsername;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -55,23 +63,41 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         String jwt = authHeader.substring(7);
 
         try {
-            String username = jwtService.getSubject(jwt);
+            Claims claims = jwtService.getClaims(jwt);
+            String username = claims.getSubject();
 
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-
-                if (jwtService.isTokenValid(jwt, userDetails)) {
-                    UsernamePasswordAuthenticationToken authToken =
-                            new UsernamePasswordAuthenticationToken(
-                                    userDetails, null, userDetails.getAuthorities());
-                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-
-                    SecurityContextHolder.getContext().setAuthentication(authToken);
-                    log.debug("✅ Authenticated user: {}", username);
+                if (isSwaggerToken(username)) {
+                    if (!jwtService.isTokenExpired(jwt)) {
+                        UsernamePasswordAuthenticationToken authToken =
+                                new UsernamePasswordAuthenticationToken(
+                                        username,
+                                        null,
+                                        buildSwaggerAuthorities(claims));
+                        authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                        SecurityContextHolder.getContext().setAuthentication(authToken);
+                        log.debug("✅ Authenticated Swagger user");
+                    } else {
+                        log.warn("⚠️ Swagger JWT token expired");
+                    }
                 } else {
-                    log.warn("⚠️ Invalid JWT token for user: {}", username);
+                    UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+
+                    if (jwtService.isTokenValid(jwt, userDetails)) {
+                        UsernamePasswordAuthenticationToken authToken =
+                                new UsernamePasswordAuthenticationToken(
+                                        userDetails, null, userDetails.getAuthorities());
+                        authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+
+                        SecurityContextHolder.getContext().setAuthentication(authToken);
+                        log.debug("✅ Authenticated user: {}", username);
+                    } else {
+                        log.warn("⚠️ Invalid JWT token for user: {}", username);
+                    }
                 }
             }
+        } catch (UsernameNotFoundException e) {
+            log.warn("⚠️ JWT user not found: {}", e.getMessage());
         } catch (Exception e) {
             log.error("❌ JWT validation failed: {}", e.getMessage());
         }
@@ -92,5 +118,20 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 path.startsWith("/v3/api-docs") ||
                 path.startsWith("/error") ||
                 path.startsWith("/actuator/health");
+    }
+
+    private boolean isSwaggerToken(String username) {
+        return swaggerUsername != null && swaggerUsername.equals(username);
+    }
+
+    private Collection<SimpleGrantedAuthority> buildSwaggerAuthorities(Claims claims) {
+        String role = claims.get("role", String.class);
+        if (role == null || role.isBlank()) {
+            role = "SWAGGER_ADMIN";
+        }
+        if (!role.startsWith("ROLE_")) {
+            role = "ROLE_" + role;
+        }
+        return List.of(new SimpleGrantedAuthority(role));
     }
 }
