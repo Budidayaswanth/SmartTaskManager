@@ -9,10 +9,8 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 /**
- * WHY:
- * - Provides a special login endpoint for Swagger UI (static credentials).
- * - Generates a JWT token that can be used to authorize Swagger API requests.
- * - Useful for testing protected endpoints without registering real users.
+ * Allows Swagger UI to authenticate using static credentials.
+ * Generates a JWT token for Swagger testing.
  */
 @RestController
 @RequestMapping("/api/auth/swagger-login")
@@ -27,30 +25,13 @@ public class SwaggerAuthController {
     @Value("${swagger.auth.password}")
     private String swaggerPassword;
 
-    /**
-     * POST /api/auth/swagger-login
-     *
-     * Example Request:
-     * {
-     *   "username": "swagger-admin",
-     *   "password": "swagger@123"
-     * }
-     *
-     * Example Response:
-     * {
-     *   "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-     *   "tokenType": "Bearer"
-     * }
-     */
     @PostMapping
     public ResponseEntity<?> swaggerLogin(@RequestBody Map<String, String> body) {
         String username = body.get("username");
         String password = body.get("password");
 
-        // Validate credentials against the configured Swagger admin credentials
         if (swaggerUsername.equals(username) && swaggerPassword.equals(password)) {
-
-            // ✅ FIX: pass Map<String, Object> as claims instead of String
+            // ✅ Pass claims properly (Map<String, Object>)
             String token = jwtService.generateToken(username, Map.of("role", "SWAGGER_ADMIN"));
 
             return ResponseEntity.ok(Map.of(

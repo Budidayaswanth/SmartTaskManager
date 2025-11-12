@@ -12,9 +12,8 @@ import java.util.Date;
 import java.util.Map;
 
 /**
- * WHY:
- * - Centralized JWT utility for token generation, validation, and parsing.
- * - Reads configuration values from application.yml (security.jwt.*)
+ * JWT Utility Service for token generation and validation.
+ * Handles both app user tokens and Swagger tokens.
  */
 @Service
 public class JwtService {
@@ -35,24 +34,44 @@ public class JwtService {
                 throw new IllegalArgumentException("JWT_SECRET is missing or empty!");
             }
 
-            // ✅ Clean the secret to remove whitespace or newline characters
+            // Clean the secret (remove any newlines or spaces)
             String cleanSecret = rawSecret.replaceAll("\\s+", "");
-
             this.key = Keys.hmacShaKeyFor(Decoders.BASE64.decode(cleanSecret));
             this.issuer = issuer;
             this.accessExpMin = accessExpMin;
             this.refreshExpDays = refreshExpDays;
 
-            System.out.println("✅ JwtService initialized — issuer: " + issuer);
+            System.out.println("✅ JwtService initialized successfully: issuer=" + issuer);
+
         } catch (Exception e) {
-            System.err.println("❌ Error initializing JwtService — check your JWT_SECRET format!");
-            throw new RuntimeException("Invalid JWT_SECRET: " + e.getMessage(), e);
+            throw new RuntimeException("❌ Invalid JWT_SECRET: " + e.getMessage(), e);
         }
     }
 
-    // ---------------------------------------------------------------------
-    // ✅ 1. Generate Access Token with Claims
-    // ---------------------------------------------------------------------
+    // ✅ Primary access token generator for app users
+    public String generateAccessToken(String subject, Map<String, Object> claims) {
+        return Jwts.builder()
+                .claims(claims)
+                .subject(subject)
+                .issuer(issuer)
+                .issuedAt(Date.from(Instant.now()))
+                .expiration(Date.from(Instant.now().plusSeconds(accessExpMin * 60)))
+                .signWith(key)
+                .compact();
+    }
+
+    // ✅ For refresh tokens
+    public String generateRefreshToken(String subject) {
+        return Jwts.builder()
+                .subject(subject)
+                .issuer(issuer)
+                .issuedAt(Date.from(Instant.now()))
+                .expiration(Date.from(Instant.now().plusSeconds(refreshExpDays * 24 * 60 * 60)))
+                .signWith(key)
+                .compact();
+    }
+
+    // ✅ For Swagger (or any simplified token without user claims)
     public String generateToken(String subject, Map<String, Object> claims) {
         return Jwts.builder()
                 .claims(claims)
@@ -64,49 +83,24 @@ public class JwtService {
                 .compact();
     }
 
-    // ---------------------------------------------------------------------
-    // ✅ 2. Generate Refresh Token
-    // ---------------------------------------------------------------------
-    public String generateRefreshToken(String subject) {
-        return Jwts.builder()
-                .subject(subject)
-                .issuer(issuer)
-                .issuedAt(Date.from(Instant.now()))
-                .expiration(Date.from(Instant.now().plusSeconds(refreshExpDays * 24 * 60 * 60)))
-                .signWith(key)
-                .compact();
-    }
-
-    // ---------------------------------------------------------------------
-    // ✅ 3. Extract Subject (username/email)
-    // ---------------------------------------------------------------------
+    // ✅ Validation + decoding methods
     public String getSubject(String token) {
-        return Jwts.parser()
-                .verifyWith(key)
-                .build()
+        return Jwts.parser().verifyWith(key).build()
                 .parseSignedClaims(token)
                 .getPayload()
                 .getSubject();
     }
 
-    // ---------------------------------------------------------------------
-    // ✅ 4. Validate Token
-    // ---------------------------------------------------------------------
     public boolean isTokenValid(String token, org.springframework.security.core.userdetails.UserDetails user) {
         String username = getSubject(token);
         return username.equals(user.getUsername()) && !isTokenExpired(token);
     }
 
-    private boolean isTokenExpired(String token) {
-        return getExpiration(token).before(new Date());
-    }
-
-    private Date getExpiration(String token) {
-        return Jwts.parser()
-                .verifyWith(key)
-                .build()
+    public boolean isTokenExpired(String token) {
+        Date exp = Jwts.parser().verifyWith(key).build()
                 .parseSignedClaims(token)
                 .getPayload()
                 .getExpiration();
+        return exp.before(new Date());
     }
 }
