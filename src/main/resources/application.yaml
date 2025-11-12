@@ -40,7 +40,10 @@ security:
     issuer: "smarttask"
     access-exp-min: 15           # 15 minutes access token
     refresh-exp-days: 7          # 7 days refresh token
-
+swagger:
+  auth:
+    username: swagger-admin
+    password: swagger@123
 # ==========================================
 # 🔉 LOGGING CONFIGURATION
 # ==========================================

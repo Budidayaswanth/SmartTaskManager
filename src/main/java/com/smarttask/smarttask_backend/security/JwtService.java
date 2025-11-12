@@ -1,70 +1,78 @@
 package com.smarttask.smarttask_backend.security;
+
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Map;
 
-/**
- * ✅ JWT service compatible with JJWT 0.12.6
- * Works in Spring Boot 3.5.7, Java 21
- * Requires jjwt-api + jjwt-impl + jjwt-jackson on classpath
- */
 @Service
 public class JwtService {
 
-    private final SecretKey key;
-    private final String issuer;
-    private final long accessExpMin;
+    @Value("${security.jwt.secret}")
+    private String secretKey;
 
-    public JwtService(
-            @Value("${security.jwt.secret}") String secret,
-            @Value("${security.jwt.issuer}") String issuer,
-            @Value("${security.jwt.access-exp-min}") long accessExpMin
-    ) {
-        // This creates an HMAC-SHA key for signing/verification
-        this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
-        this.issuer = issuer;
-        this.accessExpMin = accessExpMin;
+    @Value("${security.jwt.access-exp-min}")
+    private long accessExpMinutes;
+
+    private SecretKey key;
+
+    @PostConstruct
+    public void init() {
+        // ✅ convert string to a proper HMAC key
+        this.key = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
     }
 
-    /** Generate a JWT access token with custom claims */
-    public String generateAccessToken(String subject, Map<String, Object> claims) {
-        Instant now = Instant.now();
-        Instant exp = now.plusSeconds(accessExpMin * 60);
+    // ✅ Generate token for any username + role
+    public String generateToken(String username, String role) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("role", role);
+        return buildToken(claims, username, accessExpMinutes);
+    }
 
+    private String buildToken(Map<String, Object> claims, String subject, long expMinutes) {
+        Instant now = Instant.now();
         return Jwts.builder()
-                .subject(subject)
-                .issuer(issuer)
                 .claims(claims)
+                .subject(subject)
                 .issuedAt(Date.from(now))
-                .expiration(Date.from(exp))
-                .signWith(key, SignatureAlgorithm.HS256)
+                .expiration(Date.from(now.plusSeconds(expMinutes * 60)))
+                .signWith(key)
                 .compact();
     }
 
-    /** Extract subject (username/email) safely */
+    // ✅ Extract username from token
     public String getSubject(String token) {
-        return Jwts.parser()             // ✅ new API in 0.12.x
-                .verifyWith(key)         // ✅ key is already SecretKey
+        return Jwts.parser()
+                .verifyWith(key)
                 .build()
                 .parseSignedClaims(token)
                 .getPayload()
                 .getSubject();
     }
 
-    /** Extract full claims map (for debugging or auditing) */
-    public Map<String, Object> getClaims(String token) {
-        return Jwts.parser()
+    // ✅ Check if token is valid for the given user
+    public boolean isTokenValid(String token, UserDetails userDetails) {
+        final String username = getSubject(token);
+        return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
+    }
+
+    // ✅ Check expiry
+    private boolean isTokenExpired(String token) {
+        Date expiration = Jwts.parser()
                 .verifyWith(key)
                 .build()
                 .parseSignedClaims(token)
-                .getPayload();
+                .getPayload()
+                .getExpiration();
+        return expiration.before(new Date());
     }
 }
