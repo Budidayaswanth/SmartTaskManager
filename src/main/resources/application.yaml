@@ -1,0 +1,63 @@
+spring:
+  application:
+    name: smarttask-backend
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate     # We use Flyway to manage schema
+    properties:
+      hibernate:
+        format_sql: true
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+server:
+  port: 8080
+
+springdoc:
+  swagger-ui:
+    path: /swagger
+  api-docs:
+    path: /v1/api-docs
+
+security:
+  jwt:
+    issuer: "smarttask"
+    access-exp-min: 15
+    refresh-exp-days: 7
+
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+  datasource:
+    url: jdbc:postgresql://dpg-d40urb7gi27c73d1ct70-a.singapore-postgres.render.com:5432/springdb_tjtt?sslmode=require
+    username: yaswanth_b
+    password: YqEWOvHsKDOe4CNeNkdIeIoWxgpuR9UH
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    show-sql: true
+
+# For dev only; in prod we inject JWT_SECRET via env
+security:
+  jwt:
+    secret: "XWoVa04OgdmzxaXqMd4gOssJLIwouHZZ6aYPc07zyHu6BLwS2LMlaKeB37dnXjTq
+7Np+H/baPgnqK1cnhF9a1g=="
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+    url: ${DB_URL}     # e.g. jdbc:postgresql://<host>:5432/<db>?sslmode=require
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+security:
+  jwt:
+    secret: ${JWT_SECRET}
