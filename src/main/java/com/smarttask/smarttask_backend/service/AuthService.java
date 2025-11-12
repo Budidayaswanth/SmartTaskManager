@@ -1,6 +1,5 @@
 package com.smarttask.smarttask_backend.service;
 
-
 import com.smarttask.smarttask_backend.dto.LoginRequest;
 import com.smarttask.smarttask_backend.dto.RegisterRequest;
 import com.smarttask.smarttask_backend.dto.TokenResponse;
@@ -58,7 +57,10 @@ public class AuthService {
         if (!encoder.matches(req.password(), u.getPassword()))
             throw new IllegalArgumentException("Invalid credentials");
 
-        String access = jwtService.generateAccessToken(u.getUsername(), Map.of("role", u.getRole(), "uid", u.getId().toString()));
+        String access = jwtService.generateToken(u.getUsername(), Map.of(
+                "role", u.getRole(),
+                "uid", u.getId().toString()
+        ));
         String refresh = rotateRefresh(u);
         return new TokenResponse(access, refresh, "Bearer");
     }
@@ -74,7 +76,10 @@ public class AuthService {
         saved.setRevoked(true);            // revoke old
         rtRepo.save(saved);
 
-        String access = jwtService.generateAccessToken(u.getUsername(), Map.of("role", u.getRole(), "uid", u.getId().toString()));
+        String access = jwtService.generateToken(u.getUsername(), Map.of(
+                "role", u.getRole(),
+                "uid", u.getId().toString()
+        ));
         String refresh = rotateRefresh(u); // issue new refresh
         return new TokenResponse(access, refresh, "Bearer");
     }

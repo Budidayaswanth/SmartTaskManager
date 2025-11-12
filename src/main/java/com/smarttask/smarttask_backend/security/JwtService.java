@@ -1,6 +1,6 @@
 package com.smarttask.smarttask_backend.security;
 
-import io.jsonwebtoken.*;
+import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
@@ -11,6 +11,11 @@ import java.time.Instant;
 import java.util.Date;
 import java.util.Map;
 
+/**
+ * WHY:
+ * - Centralized JWT utility for token generation, validation, and parsing.
+ * - Reads configuration values from application.yml (security.jwt.*)
+ */
 @Service
 public class JwtService {
 
@@ -19,12 +24,6 @@ public class JwtService {
     private final long accessExpMin;
     private final long refreshExpDays;
 
-    /**
-     * WHY:
-     * - Reads JWT config from application.yml (security.jwt.*)
-     * - Initializes an HMAC-SHA key for token signing
-     * - Handles bad secrets gracefully so Render deployment doesn't crash
-     */
     public JwtService(
             @Value("${security.jwt.secret}") String rawSecret,
             @Value("${security.jwt.issuer}") String issuer,
@@ -36,7 +35,7 @@ public class JwtService {
                 throw new IllegalArgumentException("JWT_SECRET is missing or empty!");
             }
 
-            // ✅ Trim all whitespace/newlines before decoding
+            // ✅ Clean the secret to remove whitespace or newline characters
             String cleanSecret = rawSecret.replaceAll("\\s+", "");
 
             this.key = Keys.hmacShaKeyFor(Decoders.BASE64.decode(cleanSecret));
@@ -44,16 +43,16 @@ public class JwtService {
             this.accessExpMin = accessExpMin;
             this.refreshExpDays = refreshExpDays;
 
-            System.out.println("✅ JWT Service initialized successfully — issuer: " + issuer);
-
+            System.out.println("✅ JwtService initialized — issuer: " + issuer);
         } catch (Exception e) {
-            System.err.println("❌ ERROR initializing JwtService — invalid JWT_SECRET format!");
+            System.err.println("❌ Error initializing JwtService — check your JWT_SECRET format!");
             throw new RuntimeException("Invalid JWT_SECRET: " + e.getMessage(), e);
         }
     }
 
-    // ---------------- Token Generation ---------------- //
-
+    // ---------------------------------------------------------------------
+    // ✅ 1. Generate Access Token with Claims
+    // ---------------------------------------------------------------------
     public String generateToken(String subject, Map<String, Object> claims) {
         return Jwts.builder()
                 .claims(claims)
@@ -65,6 +64,9 @@ public class JwtService {
                 .compact();
     }
 
+    // ---------------------------------------------------------------------
+    // ✅ 2. Generate Refresh Token
+    // ---------------------------------------------------------------------
     public String generateRefreshToken(String subject) {
         return Jwts.builder()
                 .subject(subject)
@@ -75,17 +77,9 @@ public class JwtService {
                 .compact();
     }
 
-    // ---------------- Token Validation ---------------- //
-
-    public boolean isTokenValid(String token, org.springframework.security.core.userdetails.UserDetails user) {
-        String username = getSubject(token);
-        return username.equals(user.getUsername()) && !isTokenExpired(token);
-    }
-
-    public boolean isTokenExpired(String token) {
-        return getExpiration(token).before(new Date());
-    }
-
+    // ---------------------------------------------------------------------
+    // ✅ 3. Extract Subject (username/email)
+    // ---------------------------------------------------------------------
     public String getSubject(String token) {
         return Jwts.parser()
                 .verifyWith(key)
@@ -93,6 +87,18 @@ public class JwtService {
                 .parseSignedClaims(token)
                 .getPayload()
                 .getSubject();
+    }
+
+    // ---------------------------------------------------------------------
+    // ✅ 4. Validate Token
+    // ---------------------------------------------------------------------
+    public boolean isTokenValid(String token, org.springframework.security.core.userdetails.UserDetails user) {
+        String username = getSubject(token);
+        return username.equals(user.getUsername()) && !isTokenExpired(token);
+    }
+
+    private boolean isTokenExpired(String token) {
+        return getExpiration(token).before(new Date());
     }
 
     private Date getExpiration(String token) {
