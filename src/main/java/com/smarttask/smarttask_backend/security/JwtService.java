@@ -1,55 +1,51 @@
 package com.smarttask.smarttask_backend.security;
 
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
-import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.Map;
 
 @Service
 public class JwtService {
 
-    @Value("${security.jwt.secret}")
-    private String secretKey;
+    private final SecretKey key;
+
+    @Value("${security.jwt.issuer}")
+    private String issuer;
 
     @Value("${security.jwt.access-exp-min}")
-    private long accessExpMinutes;
+    private long accessExpMin;
 
-    private SecretKey key;
-
-    @PostConstruct
-    public void init() {
-        // ✅ convert string to a proper HMAC key
-        this.key = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
+    public JwtService(@Value("${security.jwt.secret}") String secret) {
+        this.key = Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret));
     }
 
-    // ✅ Generate token for any username + role
-    public String generateToken(String username, String role) {
-        Map<String, Object> claims = new HashMap<>();
-        claims.put("role", role);
-        return buildToken(claims, username, accessExpMinutes);
+    /** ✅ Generate a simple token (no custom claims) */
+    public String generateToken(String username, String swaggerAdmin) {
+        return generateAccessToken(username, Map.of());
     }
 
-    private String buildToken(Map<String, Object> claims, String subject, long expMinutes) {
+    /** ✅ Generate a token with optional custom claims (used for Swagger login etc.) */
+    public String generateAccessToken(String username, Map<String, String> extraClaims) {
         Instant now = Instant.now();
         return Jwts.builder()
-                .claims(claims)
-                .subject(subject)
+                .claims(extraClaims)
+                .subject(username)
                 .issuedAt(Date.from(now))
-                .expiration(Date.from(now.plusSeconds(expMinutes * 60)))
+                .expiration(Date.from(now.plusSeconds(accessExpMin * 60)))
+                .issuer(issuer)
                 .signWith(key)
                 .compact();
     }
 
-    // ✅ Extract username from token
+    /** ✅ Extract subject (username) from token */
     public String getSubject(String token) {
         return Jwts.parser()
                 .verifyWith(key)
@@ -59,20 +55,9 @@ public class JwtService {
                 .getSubject();
     }
 
-    // ✅ Check if token is valid for the given user
+    /** ✅ Validate a token against a user */
     public boolean isTokenValid(String token, UserDetails userDetails) {
-        final String username = getSubject(token);
-        return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
-    }
-
-    // ✅ Check expiry
-    private boolean isTokenExpired(String token) {
-        Date expiration = Jwts.parser()
-                .verifyWith(key)
-                .build()
-                .parseSignedClaims(token)
-                .getPayload()
-                .getExpiration();
-        return expiration.before(new Date());
+        String username = getSubject(token);
+        return username.equals(userDetails.getUsername());
     }
 }
