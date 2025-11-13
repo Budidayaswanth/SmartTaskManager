@@ -38,7 +38,6 @@ public class AuthService {
         if (userRepo.existsByEmail(req.email())) throw new IllegalArgumentException("Email taken");
 
         var u = User.builder()
-                .id(UUID.randomUUID())
                 .username(req.username())
                 .email(req.email())
                 .password(encoder.encode(req.password()))
