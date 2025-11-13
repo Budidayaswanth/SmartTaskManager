@@ -13,7 +13,8 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        var u = userRepo.findByUsernameAndDeletedFalse(username)
+        var u = userRepo.findByUsername(username)
+                .filter(user -> !user.isDeleted())
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
         return org.springframework.security.core.userdetails.User
                 .withUsername(u.getUsername())

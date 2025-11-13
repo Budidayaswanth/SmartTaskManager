@@ -11,6 +11,8 @@ import com.smarttask.smarttask_backend.repository.UserRepository;
 import com.smarttask.smarttask_backend.security.JwtService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -52,9 +54,18 @@ public class AuthService {
     @Transactional
     public TokenResponse login(LoginRequest req) {
         var u = userRepo.findByUsernameAndDeletedFalse(req.username())
-                .orElseThrow(() -> new IllegalArgumentException("Invalid credentials"));
-        if (!encoder.matches(req.password(), u.getPassword()))
-            throw new IllegalArgumentException("Invalid credentials");
+                .orElseThrow(() -> new BadCredentialsException("Invalid username or password"));
+
+        if (u.isDeleted()) {
+            throw new DisabledException("Account has been removed");
+        }
+        if (!u.isEnabled()) {
+            throw new DisabledException("Account is disabled");
+        }
+
+        if (!encoder.matches(req.password(), u.getPassword())) {
+            throw new BadCredentialsException("Invalid username or password");
+        }
 
         String access = jwtService.generateAccessToken(u.getUsername(), Map.of(
                 "role", u.getRole(),
