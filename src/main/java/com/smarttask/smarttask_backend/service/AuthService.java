@@ -36,13 +36,21 @@ public class AuthService {
 
     @Transactional
     public UserResponse register(RegisterRequest req) {
-        if (userRepo.existsByUsername(req.username())) throw new IllegalArgumentException("Username taken");
-        if (userRepo.existsByEmail(req.email())) throw new IllegalArgumentException("Email taken");
+        String username = req.username().trim();
+        String email = req.email().trim().toLowerCase();
+        String password = req.password();
+
+        if (username.isBlank() || email.isBlank() || password.isBlank()) {
+            throw new IllegalArgumentException("Username, email and password are required");
+        }
+
+        if (userRepo.existsByUsername(username)) throw new IllegalArgumentException("Username taken");
+        if (userRepo.existsByEmail(email)) throw new IllegalArgumentException("Email taken");
 
         var u = User.builder()
-                .username(req.username())
-                .email(req.email())
-                .password(encoder.encode(req.password()))
+                .username(username)
+                .email(email)
+                .password(encoder.encode(password))
                 .role("USER")
                 .enabled(true)
                 .deleted(false)
@@ -53,7 +61,10 @@ public class AuthService {
 
     @Transactional
     public TokenResponse login(LoginRequest req) {
-        var u = userRepo.findByUsernameAndDeletedFalse(req.username())
+        String username = req.username().trim();
+        String rawPassword = req.password();
+
+        var u = userRepo.findByUsernameAndDeletedFalse(username)
                 .orElseThrow(() -> new BadCredentialsException("Invalid username or password"));
 
         if (u.isDeleted()) {
@@ -63,7 +74,7 @@ public class AuthService {
             throw new DisabledException("Account is disabled");
         }
 
-        if (!encoder.matches(req.password(), u.getPassword())) {
+        if (!encoder.matches(rawPassword, u.getPassword())) {
             throw new BadCredentialsException("Invalid username or password");
         }
 
