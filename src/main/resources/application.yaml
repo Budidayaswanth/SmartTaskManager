@@ -64,8 +64,9 @@ logging:
 # ------------------------------------------
 ---
 spring:
-  profiles:
-    active: dev
+  config:
+    activate:
+      on-profile: dev
   application:
     name: smarttask-backend
   datasource:
