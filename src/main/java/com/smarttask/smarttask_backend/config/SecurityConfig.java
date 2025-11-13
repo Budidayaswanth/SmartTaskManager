@@ -74,6 +74,7 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/auth/swagger-login",  // Swagger login is PUBLIC
                                 "/api/auth/login",
+                                "/api/auth/refresh",
                                 "/api/auth/register",
                                 "/swagger/**",
                                 "/swagger-ui/**",

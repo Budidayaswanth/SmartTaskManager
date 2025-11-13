@@ -6,6 +6,7 @@ import com.smarttask.smarttask_backend.dto.TokenResponse;
 import com.smarttask.smarttask_backend.dto.UserResponse;
 import com.smarttask.smarttask_backend.entity.RefreshToken;
 import com.smarttask.smarttask_backend.entity.User;
+import com.smarttask.smarttask_backend.exception.InvalidRefreshTokenException;
 import com.smarttask.smarttask_backend.repository.RefreshTokenRepository;
 import com.smarttask.smarttask_backend.repository.UserRepository;
 import com.smarttask.smarttask_backend.security.JwtService;
@@ -88,16 +89,22 @@ public class AuthService {
 
     @Transactional
     public TokenResponse refresh(String refreshToken) {
+        if (refreshToken == null || refreshToken.isBlank()) {
+            throw new InvalidRefreshTokenException("Refresh token is required");
+        }
         var saved = rtRepo.findByTokenAndRevokedFalse(refreshToken)
-                .orElseThrow(() -> new IllegalArgumentException("Invalid refresh token"));
-        if (saved.getExpiresAt().isBefore(Instant.now()))
-            throw new IllegalArgumentException("Refresh token expired");
+                .orElseThrow(() -> new InvalidRefreshTokenException("Invalid refresh token"));
+        if (saved.getExpiresAt().isBefore(Instant.now())) {
+            saved.setRevoked(true);
+            rtRepo.save(saved);
+            throw new InvalidRefreshTokenException("Refresh token expired");
+        }
 
         var u = saved.getUser();
         saved.setRevoked(true);            // revoke old
         rtRepo.save(saved);
 
-        String access = jwtService.generateToken(u.getUsername(), Map.of(
+        String access = jwtService.generateAccessToken(u.getUsername(), Map.of(
                 "role", u.getRole(),
                 "uid", u.getId().toString()
         ));
