@@ -28,6 +28,11 @@ public class Task {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private TaskStatus status;
+
+    @Deprecated
     @Column(nullable = false)
     private boolean completed;
 
@@ -44,9 +49,33 @@ public class Task {
         var now = Instant.now();
         createdAt = now;
         updatedAt = now;
-        completed = false;
+        syncStatusAndCompleted();
     }
 
     @PreUpdate
-    void preUpdate() { updatedAt = Instant.now(); }
+    void preUpdate() {
+        updatedAt = Instant.now();
+        syncStatusAndCompleted();
+    }
+
+    public void setStatus(TaskStatus status) {
+        this.status = status;
+        this.completed = status == TaskStatus.DONE;
+    }
+
+    public void setCompleted(boolean completed) {
+        this.completed = completed;
+        if (completed) {
+            this.status = TaskStatus.DONE;
+        } else if (this.status == null || this.status == TaskStatus.DONE) {
+            this.status = TaskStatus.TODO;
+        }
+    }
+
+    private void syncStatusAndCompleted() {
+        if (status == null) {
+            status = completed ? TaskStatus.DONE : TaskStatus.TODO;
+        }
+        completed = status == TaskStatus.DONE;
+    }
 }

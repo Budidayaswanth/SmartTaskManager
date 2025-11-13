@@ -1,6 +1,8 @@
 package com.smarttask.smarttask_backend.dto;
 
+import com.smarttask.smarttask_backend.entity.TaskStatus;
 import jakarta.validation.constraints.NotBlank;
+
 import java.time.OffsetDateTime;
 
 /**
@@ -11,5 +13,7 @@ import java.time.OffsetDateTime;
 public record TaskCreateRequest(
         @NotBlank String title,
         String description,
-        OffsetDateTime dueDate
+        OffsetDateTime dueDate,
+        TaskStatus status,
+        Boolean completed
 ) {}

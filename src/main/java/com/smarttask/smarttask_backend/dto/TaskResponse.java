@@ -1,5 +1,7 @@
 package com.smarttask.smarttask_backend.dto;
 
+import com.smarttask.smarttask_backend.entity.TaskStatus;
+
 import java.time.OffsetDateTime;
 
 /**
@@ -10,6 +12,7 @@ public record TaskResponse(
         String id,
         String title,
         String description,
+        TaskStatus status,
         boolean completed,
         OffsetDateTime dueDate,
         String createdAt

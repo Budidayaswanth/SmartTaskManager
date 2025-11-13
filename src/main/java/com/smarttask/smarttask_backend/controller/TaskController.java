@@ -2,6 +2,7 @@ package com.smarttask.smarttask_backend.controller;
 
 import com.smarttask.smarttask_backend.dto.TaskCreateRequest;
 import com.smarttask.smarttask_backend.dto.TaskUpdateRequest;
+import com.smarttask.smarttask_backend.entity.TaskStatus;
 import com.smarttask.smarttask_backend.service.TaskService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -20,11 +21,12 @@ public class TaskController {
     private final TaskService tasks;
 
     @GetMapping
-    public ResponseEntity<?> list(@AuthenticationPrincipal UserDetails ud) {
+    public ResponseEntity<?> list(@AuthenticationPrincipal UserDetails ud,
+                                  @RequestParam(value = "status", required = false) TaskStatus status) {
         if (ud == null) {
             return ResponseEntity.status(401).body(Map.of("error", "Unauthorized - Missing or invalid token"));
         }
-        return ResponseEntity.ok(tasks.list(ud.getUsername()));
+        return ResponseEntity.ok(tasks.list(ud.getUsername(), status));
     }
 
     @PostMapping
